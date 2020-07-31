@@ -167,7 +167,21 @@ impl<P: JsonRpcClient> Provider<P> {
             .await
             .map_err(Into::into)?)
     }
+                .0
+            .request("eth_gasPrice", ())
+            .await
+            .map_err(Into::into)?)
+    }
 
+    /// Gets the accounts on the node
+    pub async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
+        Ok(self
+            .0
+            .request("eth_accounts", ())
+            .await
+            .map_err(Into::into)?)
+    }
+  
     /// Gets the accounts on the node
     pub async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
         Ok(self
@@ -398,7 +412,27 @@ impl<P: JsonRpcClient> Provider<P> {
             .map_err(Into::into)?)
     }
 
-    // TODO: get_storage_at
+    /// Get the storage of an address for a particular slot location
+    pub async fn get_storage_at(
+        &self,
+        from: impl Into<NameOrAddress>,
+        location: usize,
+        block: Option<BlockNumber>,
+    ) -> Result<H256, ProviderError> {
+        let from = match from.into() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => addr,
+        };
+
+        let from = utils::serialize(&from);
+        let location = utils::serialize(&location);
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        Ok(self
+            .0
+            .request("eth_getStorageAt", [from, location, block])
+            .await
+            .map_err(Into::into)?)
+    }
 
     /// Returns the deployed code at a given address
     pub async fn get_code(
